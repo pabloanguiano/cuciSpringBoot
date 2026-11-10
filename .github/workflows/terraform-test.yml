@@ -1,0 +1,57 @@
+name: Terraform Local Testing Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  infrastructure-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar el código fuente del repositorio
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Configurar Python (necesario para las herramientas de LocalStack)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Instalar Terraform CLI oficialmente
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0" # Usa la versión que prefieras
+
+      # 4. Instalar las herramientas de conveniencia (awslocal y tflocal)
+      - name: Install LocalStack Tools
+        run: |
+          pip install awscli-local terraform-local
+
+      # 5. Iniciar LocalStack en el entorno virtual usando la acción oficial
+      - name: Start LocalStack
+        uses: localstack/setup-localstack@v0.2.3
+        # Si usas la versión Pro, puedes pasar tu token de la siguiente manera:
+        # with:
+        #   image-tag: 'latest'
+        # env:
+        #   LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+
+      # 6. Inicializar y Probar con Terraform Local (tflocal)
+      - name: Terraform Init & Validate
+        run: |
+          tflocal init
+          tflocal validate
+
+      - name: Terraform Plan
+        run: |
+          tflocal plan
+
+      - name: Terraform Apply & Test
+        run: |
+          tflocal apply -auto-approve
+          tflocal test
